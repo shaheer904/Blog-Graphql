@@ -13,6 +13,8 @@ import Blog from "../models/Blog.model";
 import Comment from "../models/Comment.model";
 import { Document } from "mongoose";
 import { compareSync, hashSync } from "bcryptjs";
+import { generateToken } from "../utils/utils";
+import { isAuthenticated } from "../middleware/middleware";
 
 const RootQuery = new GraphQLObjectType({
   name: "RootQuery",
@@ -24,6 +26,14 @@ const RootQuery = new GraphQLObjectType({
         return users;
       },
     },
+    getCurrentUser: {
+      type: UserType,
+      async resolve(parent, args, context, info) {
+        await isAuthenticated(context);
+        return context.user;
+      },
+    },
+
     blogs: {
       type: GraphQLList(BlogType),
       async resolve() {
@@ -77,8 +87,7 @@ const mutations = new GraphQLObjectType({
         password: { type: GraphQLNonNull(GraphQLString) },
       },
       async resolve(parent, { email, password }) {
-        let existingUser = Document<any, any, any>;
-        existingUser = await User.findOne({ email });
+        let existingUser: Document = await User.findOne({ email });
         if (!existingUser) {
           throw new Error("No user found with this email");
         }
@@ -88,9 +97,13 @@ const mutations = new GraphQLObjectType({
           existingUser?.password
         );
         if (!dcrypt) {
-          throw new Error("Invalid credentails");
+          throw new Error("Invalid credentials");
         }
-        return existingUser;
+        const token = await generateToken(existingUser);
+        const data = existingUser.toObject();
+        data.id = data._id;
+        data.token = token;
+        return data;
       },
     },
 
