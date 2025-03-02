@@ -13,7 +13,7 @@ app.use(cors({ origin: "*" }));
 app.use(authenticate);
 app.use(
   "/graphql",
-  graphqlHTTP(async (req:any) => {
+  graphqlHTTP(async (req: any) => {
     return {
       schema: schema,
       graphiql: true,
